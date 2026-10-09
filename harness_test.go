@@ -58,6 +58,8 @@ func (fakeMusic) RoundTrip(request *http.Request) (*http.Response, error) {
 		reply = playlistResponse
 	case strings.Contains(asked, "MPREb_test"):
 		reply = albumResponse
+	case strings.Contains(asked, "UCartist"):
+		reply = artistResponse
 	case strings.Contains(asked, "FEmusic_library_landing"):
 		libraryLoads.Add(1)
 		reply = libraryResponse
@@ -68,6 +70,7 @@ func (fakeMusic) RoundTrip(request *http.Request) (*http.Response, error) {
 	case strings.HasSuffix(request.URL.Path, "/browse/edit_playlist"):
 		recordWrite(request.URL.Path, asked)
 		reply = editPlaylistResponse
+
 	case strings.Contains(asked, `"query"`):
 		searches.Add(1)
 		reply = searchResponse
@@ -149,6 +152,20 @@ const albumResponse = `{"contents":{"musicShelfRenderer":{"contents":[
 
 const playlistResponse = `{"contents":{"playlistVideoListRenderer":{"contents":[
 	{"playlistVideoRenderer":{"videoId":"playlist-video","title":{"simpleText":"Playlist video"},"lengthText":{"simpleText":"5:21"}}}
+]}}}`
+
+// artistResponse carries the heading an artist page puts over its content.
+const artistResponse = `{"header":{"musicImmersiveHeaderRenderer":{
+	"title":{"runs":[{"text":"Aurora Vale"}]},
+	"thumbnail":{"musicThumbnailRenderer":{"thumbnail":{"thumbnails":[{"url":"https://img.example/aurora"}]}}}}},
+	"contents":{"musicShelfRenderer":{"contents":[
+	{"musicResponsiveListItemRenderer":{
+		"playlistItemData":{"videoId":"vid-9"},
+		"flexColumns":[
+			{"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Artist Track"}]}}},
+			{"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Aurora Vale"},{"text":" • "},{"text":"3:00"}]}}}
+		]
+	}}
 ]}}}`
 
 const searchResponse = `{"contents":{"musicShelfRenderer":{"contents":[
