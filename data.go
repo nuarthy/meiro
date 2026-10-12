@@ -226,6 +226,8 @@ func (a *app) loadFeed(page string) {
 
 // loadDetail fetches an album, a playlist or an artist page.
 func (a *app) loadDetail(kind, id string) {
+	// A page opens unfiltered, whatever the page before it searched for.
+	a.detailFilter = ""
 	a.fetch(func(ctx context.Context, client *youtube.Client) (*youtube.BrowseResult, error) {
 		switch kind {
 		case pageAlbum:
@@ -495,6 +497,17 @@ func (a *app) setRows() {
 	// placed says whether the library has led with its tile yet.
 	placed := false
 	for index, section := range sections {
+		// Searching a playlist narrows it to the songs it matches, before the
+		// section is counted and laid out.
+		if searchingPlaylist(a, onDetail) {
+			matches := make([]youtube.MusicItem, 0, len(section.Items))
+			for _, item := range section.Items {
+				if kind, _ := targetOf(item); kind == pageTrack && matchesSearch(item, a.detailFilter) {
+					matches = append(matches, item)
+				}
+			}
+			section.Items = matches
+		}
 		if len(section.Items) == 0 {
 			continue
 		}
@@ -555,6 +568,9 @@ func (a *app) setRows() {
 	}
 	if len(a.rows) == 0 || (len(a.rows) == 1 && a.rows[0].kind == rowHero) {
 		title := "Nothing here yet"
+		if searchingPlaylist(a, onDetail) {
+			title = "No songs match “" + a.detailFilter + "”"
+		}
 		if path == "/search" {
 			title = "No results for “" + a.search.submitted + "”"
 		}
@@ -718,6 +734,22 @@ func (a *app) removeFromPlaylist(item youtube.MusicItem) {
 			a.reloadPage()
 		})
 	})
+}
+
+// searchingPlaylist reports whether a playlist page is narrowed to a search.
+func searchingPlaylist(a *app, onDetail bool) bool {
+	return a.detailFilter != "" && onDetail && a.detail.kind == pagePlaylist
+}
+
+// matchesSearch says whether a song is one a search for filter names: its title
+// or the artist beside it holds the words, whatever their case.
+func matchesSearch(item youtube.MusicItem, filter string) bool {
+	needle := strings.ToLower(strings.TrimSpace(filter))
+	if needle == "" {
+		return true
+	}
+	return strings.Contains(strings.ToLower(item.Title), needle) ||
+		strings.Contains(strings.ToLower(item.Subtitle), needle)
 }
 
 // targetOf says what an item opens. A video ID always wins: rows name their

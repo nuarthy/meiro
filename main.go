@@ -186,8 +186,12 @@ type app struct {
 	volume            float64
 	muted             float64 // the volume to return to, while muted
 	shuffle           bool
-	repeat            repeatMode
-	playErr           string
+	// detailFilter narrows a playlist page to the songs it matches.
+	detailFilter string
+	// rowsFilter is the search the page rows were last built with.
+	rowsFilter string
+	repeat     repeatMode
+	playErr    string
 	// resolving is set from the moment a track is chosen until its audio URL
 	// is found, and streamGen numbers those requests, so that only the latest
 	// one plays when it lands.

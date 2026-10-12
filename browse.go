@@ -625,6 +625,24 @@ func (a *app) hero(c *ui.Context) {
 					a.shufflePage()
 				}
 			})
+			if d.kind == pagePlaylist {
+				// The rows a page shows are built once, so a search that changed
+				// since asks for them again.
+				if a.rowsFilter != a.detailFilter {
+					a.rowsFilter = a.detailFilter
+					a.rowsDirty = true
+				}
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					ui.TextInputBase(c.Key("playlist-search"), &a.detailFilter).
+						Placeholder("Search in this playlist").Label("Search in this playlist").
+						TextColor(sc.OnSurface).FontSize(16).Grow(1)
+					if a.detailFilter != "" {
+						if m3.IconButton(c, m3.IconButtonSpec{Icon: m3.IconClose, Label: "Clear the playlist search", Kind: m3.TonalIcon, Key: "clear-playlist-search"}).Clicked() {
+							a.detailFilter = ""
+						}
+					}
+				})
+			}
 		})
 	})
 }

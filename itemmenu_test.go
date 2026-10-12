@@ -243,3 +243,69 @@ func TestASongInAPlaylistComesOffItFromItsMenu(t *testing.T) {
 		t.Errorf("a song outside a playlist was removed anyway: %#v", transport.body)
 	}
 }
+
+// searchingPage serves a playlist page of three songs.
+type searchingPage struct{}
+
+func (searchingPage) RoundTrip(request *http.Request) (*http.Response, error) {
+	body := ""
+	if request.Body != nil {
+		data, _ := io.ReadAll(request.Body)
+		request.Body = io.NopCloser(strings.NewReader(string(data)))
+		body = string(data)
+	}
+	send := func(text string) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(text)), Request: request}, nil
+	}
+	if strings.Contains(body, "VLPL_video") {
+		return send(searchingPageBody)
+	}
+	return fakeMusic{}.RoundTrip(request)
+}
+
+const searchingPageBody = `{"contents":{"playlistVideoListRenderer":{"contents":[
+	{"playlistVideoRenderer":{"videoId":"one","title":{"simpleText":"Ameiro"},"lengthText":{"simpleText":"3:00"}}},
+	{"playlistVideoRenderer":{"videoId":"two","title":{"simpleText":"Meteorite"},"lengthText":{"simpleText":"4:00"}}},
+	{"playlistVideoRenderer":{"videoId":"three","title":{"simpleText":"Ameiro (Preview)"},"lengthText":{"simpleText":"1:00"}}}
+]}}}`
+
+// Searching a playlist page narrows it to the songs that match, and play acts on
+// what is left. A search that matches nothing says so.
+func TestAPlaylistPageCanBeSearched(t *testing.T) {
+	a := newTestApp()
+	client := youtube.NewClient(youtube.Options{APIKey: "test", HTTPClient: &http.Client{Transport: searchingPage{}}})
+	a.public, a.authed, a.signedIn = client, client, true
+	tt := ui.NewTester(a.view, 1000, 700)
+	a.router.Push("/playlist/VLPL_video")
+	for i := 0; i < 20 && len(a.playable) == 0; i++ {
+		tt.Frame()
+	}
+	tt.Frame()
+	if len(a.playable) != 3 {
+		t.Fatalf("the page holds %d songs, want 3", len(a.playable))
+	}
+	if !tt.HasText("Search in this playlist") {
+		t.Fatalf("the playlist page has no search field: %q", tt.Texts())
+	}
+
+	a.detailFilter = "ameiro"
+	tt.Frame()
+	if len(a.playable) != 2 {
+		t.Errorf("the search left %d songs to play, want the 2 that match", len(a.playable))
+	}
+	if tt.HasText("Meteorite") {
+		t.Errorf("the search left a song that does not match: %q", tt.Texts())
+	}
+
+	a.detailFilter = "nothing here"
+	tt.Frame()
+	if !tt.HasText("No songs match “nothing here”") {
+		t.Errorf("an empty search does not say so: %q", tt.Texts())
+	}
+
+	a.detailFilter = ""
+	tt.Frame()
+	if len(a.playable) != 3 {
+		t.Errorf("clearing the search left %d songs, want the whole playlist", len(a.playable))
+	}
+}
