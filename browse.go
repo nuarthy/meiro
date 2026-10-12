@@ -94,6 +94,8 @@ func (a *app) rowView(c *ui.Context, i int) {
 		a.cardGrid(c, r)
 	case rowTrack:
 		a.songRow(c, r.item, a.playable, songOptions{number: r.number(), list: r.shelf, position: r.position, inset: true, fetchArtwork: true})
+	case rowSearch:
+		a.playlistSearch(c)
 	case rowMore:
 		ui.Row(c).Justify(ui.Center).Padding(16).Children(func() {
 			if m3.Button(c, m3.ButtonSpec{Label: r.title, Kind: m3.Tonal, Size: m3.Medium56, Key: "more"}).Clicked() {
@@ -625,24 +627,6 @@ func (a *app) hero(c *ui.Context) {
 					a.shufflePage()
 				}
 			})
-			if d.kind == pagePlaylist {
-				// The rows a page shows are built once, so a search that changed
-				// since asks for them again.
-				if a.rowsFilter != a.detailFilter {
-					a.rowsFilter = a.detailFilter
-					a.rowsDirty = true
-				}
-				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-					ui.TextInputBase(c.Key("playlist-search"), &a.detailFilter).
-						Placeholder("Search in this playlist").Label("Search in this playlist").
-						TextColor(sc.OnSurface).FontSize(16).Grow(1)
-					if a.detailFilter != "" {
-						if m3.IconButton(c, m3.IconButtonSpec{Icon: m3.IconClose, Label: "Clear the playlist search", Kind: m3.TonalIcon, Key: "clear-playlist-search"}).Clicked() {
-							a.detailFilter = ""
-						}
-					}
-				})
-			}
 		})
 	})
 }
@@ -657,4 +641,25 @@ func heroLabel(kind string) string {
 		return "Artist"
 	}
 	return ""
+}
+
+// playlistSearch draws the field that narrows a playlist page to the songs that
+// match. The rows a page shows are built once, so a search that changed since
+// asks for them again.
+func (a *app) playlistSearch(c *ui.Context) {
+	sc := m3.Of(c).Scheme
+	if a.rowsFilter != a.detailFilter {
+		a.rowsFilter = a.detailFilter
+		a.rowsDirty = true
+	}
+	ui.Row(c).Padding(12, pageGutter, 12).Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.TextInputBase(c.Key("playlist-search"), &a.detailFilter).
+			Placeholder("Search in this playlist").Label("Search in this playlist").
+			TextColor(sc.OnSurface).FontSize(16).Grow(1)
+		if a.detailFilter != "" {
+			if m3.IconButton(c, m3.IconButtonSpec{Icon: m3.IconClose, Label: "Clear the playlist search", Kind: m3.TonalIcon, Key: "clear-playlist-search"}).Clicked() {
+				a.detailFilter = ""
+			}
+		}
+	})
 }

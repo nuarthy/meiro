@@ -290,6 +290,7 @@ func TestAPlaylistPageCanBeSearched(t *testing.T) {
 
 	a.detailFilter = "ameiro"
 	tt.Frame()
+	tt.Frame()
 	if len(a.playable) != 2 {
 		t.Errorf("the search left %d songs to play, want the 2 that match", len(a.playable))
 	}
@@ -299,11 +300,13 @@ func TestAPlaylistPageCanBeSearched(t *testing.T) {
 
 	a.detailFilter = "nothing here"
 	tt.Frame()
+	tt.Frame()
 	if !tt.HasText("No songs match “nothing here”") {
 		t.Errorf("an empty search does not say so: %q", tt.Texts())
 	}
 
 	a.detailFilter = ""
+	tt.Frame()
 	tt.Frame()
 	if len(a.playable) != 3 {
 		t.Errorf("clearing the search left %d songs, want the whole playlist", len(a.playable))
