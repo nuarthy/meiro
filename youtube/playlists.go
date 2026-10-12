@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"slices"
 	"strings"
 )
@@ -90,6 +91,10 @@ func (c *Client) AddToPlaylist(ctx context.Context, playlistID, videoID string) 
 		return fmt.Errorf("youtube: decode browse/edit_playlist response: %w", err)
 	}
 	if !strings.Contains(response.Status, "SUCCEEDED") {
+		// YouTube answers a write it will not make with a reason only it can
+		// read, and the app shows a line of it. The whole answer goes to the
+		// log, which is where a refusal can be read in full.
+		log.Printf("playlist: add refused playlist_id=%s video_id=%s status=%q body=%s", playlistID, videoID, response.Status, raw)
 		if response.Status != "" {
 			return fmt.Errorf("youtube: the playlist refused the video (%s)", response.Status)
 		}
@@ -126,6 +131,7 @@ func (c *Client) RemoveFromPlaylist(ctx context.Context, playlistID, videoID str
 		return fmt.Errorf("youtube: decode browse/edit_playlist response: %w", err)
 	}
 	if !strings.Contains(response.Status, "SUCCEEDED") {
+		log.Printf("playlist: remove refused playlist_id=%s video_id=%s status=%q body=%s", playlistID, videoID, response.Status, raw)
 		if response.Status != "" {
 			return fmt.Errorf("youtube: the playlist refused the removal (%s)", response.Status)
 		}
