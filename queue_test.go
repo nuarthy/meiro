@@ -515,3 +515,58 @@ func TestShufflePlaysThePageFromARandomTrack(t *testing.T) {
 		t.Errorf("shuffle left the page in one order: %v", orders)
 	}
 }
+
+// Turning shuffle on arranges the whole queue behind the song playing, which
+// moves to the top. Only the songs after it used to be arranged, so a song near
+// the end left the rest of the queue out.
+func TestShuffleKeepsTheWholeQueueBehindTheSongPlaying(t *testing.T) {
+	a := newTestApp()
+	for _, id := range []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"} {
+		a.queue = append(a.queue, youtube.MusicItem{VideoID: id})
+	}
+	a.index = 4 // the fifth of ten
+	a.current = a.queue[a.index]
+	a.setShuffle(true)
+
+	if a.index != 0 {
+		t.Errorf("shuffle left the queue at %d, want the song playing at the top", a.index)
+	}
+	if a.queue[0].VideoID != "e" {
+		t.Errorf("the queue opens on %q, want the song that was playing", a.queue[0].VideoID)
+	}
+	held := map[string]int{}
+	for _, item := range a.queue {
+		held[item.VideoID]++
+	}
+	for _, id := range []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"} {
+		if held[id] != 1 {
+			t.Fatalf("the queue holds the songs as %v", held)
+		}
+	}
+
+	// The generated tracks keep their place at the end of the queue.
+	a = newTestApp()
+	for _, id := range []string{"a", "b", "c", "d", "e", "f"} {
+		a.queue = append(a.queue, youtube.MusicItem{VideoID: id})
+	}
+	a.queue = append(a.queue, youtube.MusicItem{VideoID: "generated-one"})
+	a.recommendationStart = 6
+	a.index, a.current = 3, a.queue[3]
+	a.setShuffle(true)
+
+	if a.index != 0 || a.queue[0].VideoID != "d" {
+		t.Errorf("shuffle left %q at %d, want the song playing at the top", a.queue[0].VideoID, a.index)
+	}
+	if a.recommendationStart != 6 || a.queue[6].VideoID != "generated-one" {
+		t.Errorf("shuffle moved the generated tracks: start=%d queue=%v", a.recommendationStart, a.queue[6:])
+	}
+	held = map[string]int{}
+	for _, item := range a.queue[:6] {
+		held[item.VideoID]++
+	}
+	for _, id := range []string{"a", "b", "c", "d", "e", "f"} {
+		if held[id] != 1 {
+			t.Fatalf("the queue holds the playlist as %v", held)
+		}
+	}
+}

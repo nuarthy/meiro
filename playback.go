@@ -724,22 +724,29 @@ func (a *app) shufflePage() {
 	a.playWithOptions(queue[0], queue, 0, options, source)
 }
 
-// shuffleQueue arranges the tracks of the queue that are still to play in a
-// random order, once: from there the queue moves from each track to the next.
-// The track playing, the tracks already played, and the generated tracks at the
-// end of the queue stay where they are.
+// shuffleQueue arranges the whole queue behind the track that is playing, which
+// moves to the top, the way Spotify does it: the songs before it are not left
+// out, and the queue plays on from there to its end. The tracks already played
+// lose their place, which is what shuffling a queue means. The generated tracks
+// at the end of the queue stay where they are.
 func (a *app) shuffleQueue() {
 	limit := len(a.queue)
 	if a.recommendationStart >= 0 && a.recommendationStart < limit {
 		limit = a.recommendationStart
 	}
-	start := a.index + 1
-	if start < 0 || start >= limit {
+	if limit <= 1 || a.index < 0 || a.index >= limit {
 		return
 	}
-	rand.Shuffle(limit-start, func(i, j int) {
-		a.queue[start+i], a.queue[start+j] = a.queue[start+j], a.queue[start+i]
-	})
+	current := a.queue[a.index]
+	rest := make([]youtube.MusicItem, 0, limit-1)
+	rest = append(rest, a.queue[:a.index]...)
+	rest = append(rest, a.queue[a.index+1:limit]...)
+	rand.Shuffle(len(rest), func(i, j int) { rest[i], rest[j] = rest[j], rest[i] })
+	copy(a.queue[:limit], append([]youtube.MusicItem{current}, rest...))
+	a.index = 0
+	if a.recommendationStart >= 0 {
+		a.recommendationStart = limit
+	}
 }
 
 // setShuffle turns shuffle on or off. Turning it on arranges what is still to
