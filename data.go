@@ -84,7 +84,6 @@ const (
 	rowLoading                // the page is loading
 	rowError                  // the page failed
 	rowEmpty                  // the page has nothing on it
-	rowSearch                 // the field that searches a playlist page
 )
 
 // row is one line of a page's list.
@@ -474,10 +473,6 @@ func (a *app) setRows() {
 	onDetail := isDetail(path)
 	if onDetail {
 		a.rows = append(a.rows, row{kind: rowHero, title: a.detail.title, track: -1})
-		if a.detail.kind == pagePlaylist {
-			// The field sits over the songs, the width of the page.
-			a.rows = append(a.rows, row{kind: rowSearch, track: -1})
-		}
 	}
 	switch {
 	case s.loading:
@@ -571,8 +566,7 @@ func (a *app) setRows() {
 		}
 		a.rows = append(a.rows, row{kind: rowMore, title: title, track: -1})
 	}
-	if len(a.rows) == 0 || (len(a.rows) == 1 && a.rows[0].kind == rowHero) ||
-		(len(a.rows) == 2 && a.rows[0].kind == rowHero && a.rows[1].kind == rowSearch) {
+	if len(a.rows) == 0 || (len(a.rows) == 1 && a.rows[0].kind == rowHero) {
 		title := "Nothing here yet"
 		if searchingPlaylist(a, onDetail) {
 			title = "No songs match “" + a.detailFilter + "”"

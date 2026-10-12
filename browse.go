@@ -94,8 +94,6 @@ func (a *app) rowView(c *ui.Context, i int) {
 		a.cardGrid(c, r)
 	case rowTrack:
 		a.songRow(c, r.item, a.playable, songOptions{number: r.number(), list: r.shelf, position: r.position, inset: true, fetchArtwork: true})
-	case rowSearch:
-		a.playlistSearch(c)
 	case rowMore:
 		ui.Row(c).Justify(ui.Center).Padding(16).Children(func() {
 			if m3.Button(c, m3.ButtonSpec{Label: r.title, Kind: m3.Tonal, Size: m3.Medium56, Key: "more"}).Clicked() {
@@ -626,6 +624,9 @@ func (a *app) hero(c *ui.Context) {
 				if m3.Button(c, m3.ButtonSpec{Label: "Shuffle", Icon: m3.IconShuffle, Kind: m3.Tonal, Size: m3.Medium56, Disabled: none, Key: "hero-shuffle"}).Clicked() {
 					a.shufflePage()
 				}
+				if d.kind == pagePlaylist {
+					a.playlistSearch(c)
+				}
 			})
 		})
 	})
@@ -643,22 +644,21 @@ func heroLabel(kind string) string {
 	return ""
 }
 
-// playlistSearch draws the field that narrows a playlist page to the songs that
-// match. It is the search bar the Search page uses, over the songs. The rows a
-// page shows are built once, so a search that changed since asks for them again.
+// playlistSearch draws the bar that narrows a playlist page to the songs that
+// match, beside the buttons that play it. The rows a page shows are built once,
+// so a search that changed since asks for them again.
 func (a *app) playlistSearch(c *ui.Context) {
 	if a.rowsFilter != a.detailFilter {
 		a.rowsFilter = a.detailFilter
 		a.rowsDirty = true
 	}
-	ui.Row(c).Padding(12, pageGutter, 12).Children(func() {
-		result := m3.SearchBar(c, m3.SearchSpec{
+	ui.Row(c).Grow(1).MaxWidth(520).Children(func() {
+		if m3.SearchBar(c, m3.SearchSpec{
 			Value:       &a.detailFilter,
 			Placeholder: "Search in this playlist",
 			Key:         "playlist-search",
-			MaxWidth:    760,
-		})
-		if result.Cleared {
+			MaxWidth:    520,
+		}).Cleared {
 			a.detailFilter = ""
 		}
 	})
