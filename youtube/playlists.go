@@ -98,6 +98,42 @@ func (c *Client) AddToPlaylist(ctx context.Context, playlistID, videoID string) 
 	return nil
 }
 
+func (c *Client) RemoveFromPlaylist(ctx context.Context, playlistID, videoID string) error {
+	if c.cookieAuth == nil {
+		return errors.New("youtube: RemoveFromPlaylist requires cookie authentication")
+	}
+	playlistID = strings.TrimPrefix(strings.TrimSpace(playlistID), "VL")
+	videoID = strings.TrimSpace(videoID)
+	switch {
+	case playlistID == "":
+		return errors.New("youtube: RemoveFromPlaylist needs a playlist")
+	case videoID == "":
+		return errors.New("youtube: RemoveFromPlaylist needs a video")
+	}
+	raw, err := c.execute(ctx, "browse/edit_playlist", map[string]any{
+		"playlistId": playlistID,
+		"actions": []map[string]any{
+			{"action": "ACTION_REMOVE_VIDEO", "removedVideoId": videoID},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	var response struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(raw, &response); err != nil {
+		return fmt.Errorf("youtube: decode browse/edit_playlist response: %w", err)
+	}
+	if !strings.Contains(response.Status, "SUCCEEDED") {
+		if response.Status != "" {
+			return fmt.Errorf("youtube: the playlist refused the removal (%s)", response.Status)
+		}
+		return refusedWrite("browse/edit_playlist", raw)
+	}
+	return nil
+}
+
 // videoIDs returns the videos of a write, without the blanks and the repeats.
 func videoIDs(videos []string) []string {
 	var ids []string

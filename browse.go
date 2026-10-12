@@ -573,6 +573,12 @@ func (a *app) songMenu(c *ui.Context, anchor ui.Element, key string, item youtub
 			a.openAddToPlaylist(item)
 			close()
 		}
+		if item.VideoID != "" && strings.HasPrefix(a.router.Path(), "/playlist/") {
+			if m3.MenuItem(c, "Remove from playlist", m3.IconRemove).Clicked() {
+				a.removeFromPlaylist(item)
+				close()
+			}
+		}
 		if m3.MenuItem(c, "Copy link", m3.IconCopy).Clicked() {
 			c.WriteClipboard("https://music.youtube.com/watch?v=" + url.QueryEscape(item.VideoID))
 			c.Toast("Link copied")

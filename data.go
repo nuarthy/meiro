@@ -690,6 +690,36 @@ func (a *app) playCollection(item youtube.MusicItem, list string, position int, 
 	})
 }
 
+// removeFromPlaylist takes a song off the playlist page showing it.
+func (a *app) removeFromPlaylist(item youtube.MusicItem) {
+	if item.VideoID == "" || !strings.HasPrefix(a.router.Path(), "/playlist/") {
+		return
+	}
+	client := a.client()
+	if client == nil {
+		return
+	}
+	id := pathArg(a.router.Path())
+	if id == "" {
+		return
+	}
+	title, playlist := item.Title, a.detail.title
+	a.run(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		err := client.RemoveFromPlaylist(ctx, id, item.VideoID)
+		a.update(func() {
+			if err != nil {
+				a.notice = "Could not remove “" + title + "” from “" + playlist + "”: " + err.Error()
+				return
+			}
+			a.notice = "Removed “" + title + "” from “" + playlist + "”"
+			// The page shows the playlist as it was read.
+			a.reloadPage()
+		})
+	})
+}
+
 // targetOf says what an item opens. A video ID always wins: rows name their
 // artist beside the track itself, and the artist must not capture the tap.
 // Album and playlist IDs route only items with no video; the artist only

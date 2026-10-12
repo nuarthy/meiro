@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -176,5 +177,69 @@ func TestAPlaylistCardMenuOffersShufflePlay(t *testing.T) {
 	}
 	if len(opened) < 2 {
 		t.Errorf("shuffle play always opened on %v", opened)
+	}
+}
+
+// removingLibrary serves a playlist page and records the edit made from it.
+type removingLibrary struct {
+	body map[string]any
+}
+
+func (r *removingLibrary) RoundTrip(request *http.Request) (*http.Response, error) {
+	body := ""
+	if request.Body != nil {
+		data, _ := io.ReadAll(request.Body)
+		request.Body = io.NopCloser(strings.NewReader(string(data)))
+		body = string(data)
+	}
+	send := func(text string) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(text)), Request: request}, nil
+	}
+	switch {
+	case strings.Contains(request.URL.Path, "edit_playlist"):
+		_ = json.Unmarshal([]byte(body), &r.body)
+		return send(`{"status":"STATUS_SUCCEEDED"}`)
+	case strings.Contains(body, "VLPL_video"):
+		return send(playlistResponse)
+	}
+	return fakeMusic{}.RoundTrip(request)
+}
+
+// A song on a playlist page comes off it, and the edit names the playlist and
+// the song. The menu offers it only on a playlist page.
+func TestASongInAPlaylistComesOffItFromItsMenu(t *testing.T) {
+	a := newTestApp()
+	transport := &removingLibrary{}
+	auth, err := youtube.NewCookieAuth("SAPISID=test", youtube.CookieOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := youtube.NewClient(youtube.Options{APIKey: "test", CookieAuth: auth, HTTPClient: &http.Client{Transport: transport}})
+	a.public, a.authed, a.signedIn = client, client, true
+	a.detail = detail{kind: pagePlaylist, title: "My playlist"}
+	a.router.Push("/playlist/VLPL_video")
+	a.removeFromPlaylist(youtube.MusicItem{Title: "Playlist video", VideoID: "playlist-video"})
+
+	if transport.body["playlistId"] != "PL_video" {
+		t.Errorf("playlistId = %#v, want the playlist without the VL prefix", transport.body["playlistId"])
+	}
+	actions, _ := transport.body["actions"].([]any)
+	if len(actions) != 1 {
+		t.Fatalf("actions = %#v, want one", transport.body["actions"])
+	}
+	action, _ := actions[0].(map[string]any)
+	if action["action"] != "ACTION_REMOVE_VIDEO" || action["removedVideoId"] != "playlist-video" {
+		t.Errorf("action = %#v, want the song removed", action)
+	}
+	if !strings.Contains(a.notice, "Removed") {
+		t.Errorf("the removal was not announced: %q", a.notice)
+	}
+
+	// A song playing from anywhere else is not offered the same treatment.
+	a.router.Push("/home")
+	transport.body = nil
+	a.removeFromPlaylist(youtube.MusicItem{Title: "Elsewhere", VideoID: "elsewhere"})
+	if transport.body != nil {
+		t.Errorf("a song outside a playlist was removed anyway: %#v", transport.body)
 	}
 }
