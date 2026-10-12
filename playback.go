@@ -737,6 +737,8 @@ func (a *app) shuffleQueue() {
 	if limit <= 1 || a.index < 0 || a.index >= limit {
 		return
 	}
+	// The order the queue is in now is what turning shuffle off puts back.
+	a.shuffleKept = append(a.shuffleKept[:0], a.queue[:limit]...)
 	current := a.queue[a.index]
 	rest := make([]youtube.MusicItem, 0, limit-1)
 	rest = append(rest, a.queue[:a.index]...)
@@ -756,8 +758,58 @@ func (a *app) setShuffle(on bool) {
 	a.shuffle = on
 	if on {
 		a.shuffleQueue()
+	} else {
+		a.restoreQueue()
 	}
 	a.syncSystemMedia()
+}
+
+// restoreQueue puts the queue back in the order it held before it was arranged,
+// with the song playing where it was, and the tracks the queue gained while it
+// was arranged after the rest.
+func (a *app) restoreQueue() {
+	if len(a.shuffleKept) == 0 {
+		return
+	}
+	limit := len(a.queue)
+	if a.recommendationStart >= 0 && a.recommendationStart < limit {
+		limit = a.recommendationStart
+	}
+	if limit == 0 {
+		return
+	}
+	playing := ""
+	if a.index >= 0 && a.index < limit {
+		playing = a.queue[a.index].VideoID
+	}
+	held := make(map[string]youtube.MusicItem, limit)
+	for _, item := range a.queue[:limit] {
+		held[item.VideoID] = item
+	}
+	ordered := make([]youtube.MusicItem, 0, limit)
+	for _, item := range a.shuffleKept {
+		if queued, ok := held[item.VideoID]; ok {
+			ordered = append(ordered, queued)
+			delete(held, item.VideoID)
+		}
+	}
+	for _, item := range a.queue[:limit] {
+		if _, ok := held[item.VideoID]; ok {
+			ordered = append(ordered, item)
+			delete(held, item.VideoID)
+		}
+	}
+	copy(a.queue[:limit], ordered)
+	a.shuffleKept = a.shuffleKept[:0]
+	if playing == "" {
+		return
+	}
+	for i, item := range a.queue[:limit] {
+		if item.VideoID == playing {
+			a.index = i
+			break
+		}
+	}
 }
 
 // setVolume sets the volume, from 0 to 100, and keeps it for the next run.

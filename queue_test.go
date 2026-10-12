@@ -570,3 +570,29 @@ func TestShuffleKeepsTheWholeQueueBehindTheSongPlaying(t *testing.T) {
 		}
 	}
 }
+
+// Turning shuffle off puts the queue back in the order it held, with the song
+// playing where it was, so the up-next panel lists the playlist again.
+func TestTurningShuffleOffPutsTheQueueBack(t *testing.T) {
+	a := newTestApp()
+	for _, id := range []string{"a", "b", "c", "d", "e", "f", "g", "h"} {
+		a.queue = append(a.queue, youtube.MusicItem{VideoID: id})
+	}
+	a.index, a.current = 4, a.queue[4]
+	a.setShuffle(true)
+	if a.queue[0].VideoID != "e" {
+		t.Fatalf("shuffle did not open on the song playing: %v", a.queue[0].VideoID)
+	}
+	a.setShuffle(false)
+
+	order := make([]string, 0, len(a.queue))
+	for _, item := range a.queue {
+		order = append(order, item.VideoID)
+	}
+	if want := []string{"a", "b", "c", "d", "e", "f", "g", "h"}; !slices.Equal(order, want) {
+		t.Errorf("the queue came back as %v, want %v", order, want)
+	}
+	if a.index != 4 || a.current.VideoID != "e" {
+		t.Errorf("the queue came back at %d playing %q, want the song where it was", a.index, a.current.VideoID)
+	}
+}

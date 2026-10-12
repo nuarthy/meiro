@@ -190,8 +190,11 @@ type app struct {
 	detailFilter string
 	// rowsFilter is the search the page rows were last built with.
 	rowsFilter string
-	repeat     repeatMode
-	playErr    string
+	// shuffleKept is the order the queue was in before it was arranged, so that
+	// turning shuffle off puts it back.
+	shuffleKept []youtube.MusicItem
+	repeat      repeatMode
+	playErr     string
 	// resolving is set from the moment a track is chosen until its audio URL
 	// is found, and streamGen numbers those requests, so that only the latest
 	// one plays when it lands.
