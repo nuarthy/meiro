@@ -644,22 +644,22 @@ func heroLabel(kind string) string {
 }
 
 // playlistSearch draws the field that narrows a playlist page to the songs that
-// match. The rows a page shows are built once, so a search that changed since
-// asks for them again.
+// match. It is the search bar the Search page uses, over the songs. The rows a
+// page shows are built once, so a search that changed since asks for them again.
 func (a *app) playlistSearch(c *ui.Context) {
-	sc := m3.Of(c).Scheme
 	if a.rowsFilter != a.detailFilter {
 		a.rowsFilter = a.detailFilter
 		a.rowsDirty = true
 	}
-	ui.Row(c).Padding(12, pageGutter, 12).Gap(8).AlignItems(ui.Center).Children(func() {
-		ui.TextInputBase(c.Key("playlist-search"), &a.detailFilter).
-			Placeholder("Search in this playlist").Label("Search in this playlist").
-			TextColor(sc.OnSurface).FontSize(16).Grow(1)
-		if a.detailFilter != "" {
-			if m3.IconButton(c, m3.IconButtonSpec{Icon: m3.IconClose, Label: "Clear the playlist search", Kind: m3.TonalIcon, Key: "clear-playlist-search"}).Clicked() {
-				a.detailFilter = ""
-			}
+	ui.Row(c).Padding(12, pageGutter, 12).Children(func() {
+		result := m3.SearchBar(c, m3.SearchSpec{
+			Value:       &a.detailFilter,
+			Placeholder: "Search in this playlist",
+			Key:         "playlist-search",
+			MaxWidth:    760,
+		})
+		if result.Cleared {
+			a.detailFilter = ""
 		}
 	})
 }
