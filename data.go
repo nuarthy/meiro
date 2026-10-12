@@ -499,7 +499,17 @@ func (a *app) setRows() {
 	for index, section := range sections {
 		// Searching a playlist narrows it to the songs it matches, before the
 		// section is counted and laid out.
-		if searchingPlaylist(a, onDetail) {
+		// The queue a playlist page gathers is the whole playlist, whether or
+		// not a search is showing only some of it: playing a search result plays
+		// the playlist from that song.
+		wholePlaylist := searchingPlaylist(a, onDetail)
+		source := section.Items
+		if wholePlaylist {
+			for _, item := range source {
+				if kind, _ := targetOf(item); kind == pageTrack {
+					a.playable = append(a.playable, item)
+				}
+			}
 			matches := make([]youtube.MusicItem, 0, len(section.Items))
 			for _, item := range section.Items {
 				if kind, _ := targetOf(item); kind == pageTrack && matchesSearch(item, a.detailFilter) {
@@ -526,12 +536,16 @@ func (a *app) setRows() {
 			for position, item := range section.Items {
 				r := row{kind: rowTrack, shelf: shelf, item: item, track: -1, position: position}
 				if kind, _ := targetOf(item); kind == pageTrack {
-					r.track = len(a.playable)
 					if item.Thumbnail == "" {
 						item.Thumbnail = fallback
 						r.item = item
 					}
-					a.playable = append(a.playable, item)
+					if wholePlaylist {
+						r.track = playableIndex(a.playable, item.VideoID)
+					} else {
+						r.track = len(a.playable)
+						a.playable = append(a.playable, item)
+					}
 				}
 				a.rows = append(a.rows, r)
 			}
@@ -734,6 +748,17 @@ func (a *app) removeFromPlaylist(item youtube.MusicItem) {
 			a.reloadPage()
 		})
 	})
+}
+
+// playableIndex is where a song sits in the queue a page gathered, and -1 when
+// it is not there.
+func playableIndex(playable []youtube.MusicItem, videoID string) int {
+	for i, item := range playable {
+		if item.VideoID == videoID {
+			return i
+		}
+	}
+	return -1
 }
 
 // searchingPlaylist reports whether a playlist page is narrowed to a search.

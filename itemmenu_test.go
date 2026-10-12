@@ -291,8 +291,18 @@ func TestAPlaylistPageCanBeSearched(t *testing.T) {
 	a.detailFilter = "ameiro"
 	tt.Frame()
 	tt.Frame()
-	if len(a.playable) != 2 {
-		t.Errorf("the search left %d songs to play, want the 2 that match", len(a.playable))
+	// The page shows the matches, and the queue is still the whole playlist.
+	if len(a.playable) != 3 {
+		t.Errorf("the search left %d songs to play, want the playlist's 3", len(a.playable))
+	}
+	shown := 0
+	for _, r := range a.rows {
+		if r.kind == rowTrack {
+			shown++
+		}
+	}
+	if shown != 2 {
+		t.Errorf("the search shows %d songs, want the 2 that match", shown)
 	}
 	if tt.HasText("Meteorite") {
 		t.Errorf("the search left a song that does not match: %q", tt.Texts())
