@@ -11,7 +11,6 @@ package main
 import (
 	"context"
 	"log"
-	"math/rand/v2"
 	"path/filepath"
 	"runtime/debug"
 	"strconv"
@@ -549,8 +548,7 @@ func (a *app) systemMediaControls() systemmedia.Controls {
 		},
 		SetShuffle: func(shuffle bool) {
 			a.update(func() {
-				a.shuffle = shuffle
-				a.syncSystemMedia()
+				a.setShuffle(shuffle)
 			})
 		},
 		SetRepeat: func(status string) {
@@ -758,14 +756,6 @@ func (a *app) nextIndex() (int, bool) {
 	switch {
 	case limit == 0 || (!a.settings.AutoPlay && a.recommendationStart >= 0 && a.index >= limit):
 		return 0, false
-	case a.shuffle && limit > 1:
-		// Any track but the current one: draw from the others, and step over
-		// the current one's place.
-		i := rand.IntN(limit - 1)
-		if i >= a.index && a.index >= 0 {
-			i++
-		}
-		return i, true
 	case a.index+1 < limit:
 		return a.index + 1, true
 	case a.repeat == repeatQueue:
